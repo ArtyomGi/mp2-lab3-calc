@@ -1,4 +1,6 @@
 #pragma once
+#include <iostream>
+
 
 template <class T>
 class Stack
@@ -20,6 +22,7 @@ public:
 	T pop();
 	bool isEmpty();
 	bool isFull();
+	void Print();
 };
 
 template <class T>
@@ -58,4 +61,11 @@ template <class T>
 bool Stack<T>::isFull()
 {
 	return (index >= len-1);
+}
+
+template <class T>
+void Stack<T>::Print()
+{
+	for (int i = 0; i < index; i++)
+		cout << pMem[i] << endl;
 }

@@ -1,20 +1,21 @@
 #pragma once
 
 #include <string>
-#include "Stack.h"
+#include <queue>
 #include <utility>
 
 using namespace std;
 
+enum ElemType { Operation, Operand };
+
 class Calculator
 {
 	string expr;
-	enum ElemType { Operation, Operand };
+
 	const string operations = { '+', '-', '*', '/', '(', ')' };
-	Stack<pair<string, ElemType>> parsed;
+	queue<pair<string, ElemType>> parsed;
 public:
-	Calculator(const string _expr):
-		parsed(_expr.length())
+	Calculator(const string _expr)
 	{
 		if (!_expr.length()) throw "String length must be positive";
 		expr = _expr;
@@ -23,4 +24,8 @@ public:
 	void Parse();
 	void ToPostfix();
 	void Calculate();
+	queue<pair<string, ElemType>>& getQ()
+	{
+		return parsed;
+	}
 };
