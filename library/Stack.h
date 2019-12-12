@@ -19,10 +19,16 @@ public:
 
 	Stack(const Stack& s);
 	void push(T el);
+	T front();
 	T pop();
 	bool isEmpty();
 	bool isFull();
 	void Print();
+
+	int size()
+	{
+		return index + 1;
+	}
 };
 
 template <class T>
@@ -37,15 +43,22 @@ Stack<T>::Stack(const Stack<T>& s)
 template <class T>
 void Stack<T>::push(T el)
 {
-	if (isFull) throw "Stack is full";
+	if (isFull()) throw "Stack is full";
 	index++;
 	pMem[index] = el;
 }
 
 template <class T>
+T Stack<T>::front()
+{
+	if (isEmpty()) throw "Stack is empty";
+	return pMem[index];
+}
+
+template <class T>
 T Stack<T>::pop()
 {
-	if (isEmpty) throw "Stack is empty";
+	if (isEmpty()) throw "Stack is empty";
 	T tmp = pMem[index];
 	index--;
 	return tmp;
