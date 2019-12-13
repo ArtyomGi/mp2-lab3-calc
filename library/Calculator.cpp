@@ -2,6 +2,50 @@
 #include "Stack.h"
 #include "cmath"
 
+vector<double> Calculator::Calculate(int PrintQ = 0)
+{
+	vector<double> res;
+	try
+	{
+		queue<pair<string, ElemType> > parsed = Parse(expr);
+
+		if (PrintQ)
+		{
+			queue<pair<string, ElemType> > parsed2 = parsed;
+			while (!parsed2.empty())
+			{
+				cout << parsed2.front().first << endl;
+				parsed2.pop();
+			}
+		}
+
+		queue<pair<string, ElemType> > postfix = ToPostfix(parsed);
+
+		if (PrintQ)
+		{
+			queue<pair<string, ElemType> > parsed2 = postfix;
+			while (!parsed2.empty())
+			{
+				cout << parsed2.front().first << ' ';
+				parsed2.pop();
+			}
+			cout << endl;
+		}
+		res = CalculateFromPostfix(postfix);
+	}
+	catch (const char* error)
+	{
+		cout << "Error has occured!" << endl;
+		cout << "Error: " << error << endl;
+	}
+	catch (...)
+	{
+		cout << "Unexpectable error has occured!" << endl;
+	}
+	
+	return res;
+}
+
 queue<pair<string, ElemType>> Calculator::ToPostfix(queue<pair<string, ElemType>> parsed)
 {
 	Stack<pair<string, ElemType>> st(parsed.size());
@@ -28,15 +72,23 @@ queue<pair<string, ElemType>> Calculator::ToPostfix(queue<pair<string, ElemType>
 		pair<string, ElemType> current = symbols.front();
 		if (current.second == Operand)
 			result.push({ current.first, Operand });
+		else if (current.second == Delimiter)
+		{
+			if (!st.isEmpty())
+			{
+				while (!st.isEmpty())
+				{
+					if (st.front().first.back() == ')' || st.front().first.back() == '(') throw "Unnecessary brackets";
+					result.push({ st.pop().first, Operation });
+					result.push({ current.first, Delimiter });
+					//result += st.pop().first;
+				}
+			}
+			else
+				result.push({ current.first, Delimiter });
+		}
 		else
 		{
-			/*if (last == Operation && current.first.back() == '-')
-			{
-				//symbols.pop();
-				//symbols.push({ string(1, '0'), Operand });
-				//symbols.push({ string(1, '-'), Operation });
-				//symbols.
-			}*/
 			if (current.first.back() == ')')
 			{
 				if (st.isEmpty()) throw "Current symbol is ), but stack is empty";
@@ -81,18 +133,20 @@ queue<pair<string, ElemType>> Calculator::Parse(string expr)
 	string tmp;
 
 	queue<pair<string, ElemType>> parsed;
-	int lastState = 0;
 
 	for (string::const_iterator i = expr.cbegin(); i != expr.cend(); i++)
 	{
-		//lastState = state;
 		switch (state)
 		{
 		case 0:
-			if (*i == '-' && (parsed.empty() || parsed.back().second == Operation))
+			if (*i == '-' && (parsed.empty() || parsed.back().second == Operation || parsed.back().second == Delimiter))
 			{
 				tmp = *i;
 				state = 1;
+			}
+			else if (*i == ';')
+			{
+				parsed.push({ string(1, *i), Delimiter });
 			}
 			else if (operations.find(*i) != string::npos) // + else
 			{
@@ -115,11 +169,23 @@ queue<pair<string, ElemType>> Calculator::Parse(string expr)
 				if (tmp.length())
 				{
 					//throw "No operand before operation";
-					if(tmp == "sin") parsed.push({ tmp, Operation });
+					if(tmp == "sin" || tmp == "cos" || tmp == "tan" || tmp == "sqrt") parsed.push({ tmp, Operation });
 					else parsed.push({ tmp, Operand });
 					tmp.clear();
 				}
 				parsed.push({ string(1, *i), Operation });
+				state = 0;
+			}
+			else if (*i == ';')
+			{
+				if (tmp.length())
+				{
+					//throw "No operand before operation";
+					if (tmp == "sin" || tmp == "cos" || tmp == "tan" || tmp == "sqrt") parsed.push({ tmp, Operation });
+					else parsed.push({ tmp, Operand });
+					tmp.clear();
+				}
+				parsed.push({ string(1, *i), Delimiter });
 				state = 0;
 			}
 			else if (*i == ' ')
@@ -129,7 +195,7 @@ queue<pair<string, ElemType>> Calculator::Parse(string expr)
 				{
 					//throw "No operand before operation";
 
-					if (tmp == "sin") parsed.push({ tmp, Operation });
+					if (tmp == "sin" || tmp == "cos" || tmp == "tan" || tmp == "sqrt") parsed.push({ tmp, Operation });
 					else parsed.push({ tmp, Operand });
 					tmp.clear();
 				}
@@ -143,11 +209,6 @@ queue<pair<string, ElemType>> Calculator::Parse(string expr)
 			}
 			break;
 		}
-		lastState = state;
-		/*if (operations.find(*i) != std::string::npos)
-		{
-
-		}*/
 	}
 
 	if (tmp.size()) parsed.push({ tmp, Operand });
@@ -155,8 +216,9 @@ queue<pair<string, ElemType>> Calculator::Parse(string expr)
 	return parsed;
 }
 
-double Calculator::CalculateFromPostfix(queue<pair<string, ElemType>> parsedPostf)
+vector<double> Calculator::CalculateFromPostfix(queue<pair<string, ElemType>> parsedPostf)
 {
+	vector<double> results;
 	//result = result;
 	Stack<pair<string, ElemType>> st(parsedPostf.size());
 	double op1, op2;
@@ -164,6 +226,13 @@ double Calculator::CalculateFromPostfix(queue<pair<string, ElemType>> parsedPost
 	{
 		if (parsedPostf.front().second == Operand)
 			st.push(parsedPostf.front());
+		else if (parsedPostf.front().second == Delimiter)
+		{
+			if (st.isEmpty()) throw "Mismatch of operators and operands (no more operands are left)";
+			if (st.size() > 1) throw "Mismatch of operators and operands (2 or more operands are left)";
+			
+			results.push_back(stod(st.pop().first.c_str()));
+		}
 		else
 		{
 			switch (parsedPostf.front().first.back())
@@ -204,19 +273,54 @@ double Calculator::CalculateFromPostfix(queue<pair<string, ElemType>> parsedPost
 				op1 = stod(st.pop().first.c_str());
 
 				st.push({ to_string(sin(op1)), Operand });
-				//break;
+			}
+			else if (parsedPostf.front().first == "cos")
+			{
+				if (st.size() < 1) throw "No operands for operator cos";
+				//op2 = atoi(st.pop().first.c_str());
+				op1 = stod(st.pop().first.c_str());
+
+				st.push({ to_string(cos(op1)), Operand });
+			}
+			else if (parsedPostf.front().first == "tan")
+			{
+				if (st.size() < 1) throw "No operands for operator tan";
+				//op2 = atoi(st.pop().first.c_str());
+				op1 = stod(st.pop().first.c_str());
+
+				st.push({ to_string(tan(op1)), Operand });
+			}
+			else if (parsedPostf.front().first == "sqrt")
+			{
+				if (st.size() < 1) throw "No operands for operator sqrt";
+				//op2 = atoi(st.pop().first.c_str());
+				op1 = stod(st.pop().first.c_str());
+
+				st.push({ to_string(sqrt(op1)), Operand });
 			}
 		}
 
 		parsedPostf.pop();
 	}
-	if (st.isEmpty()) throw "Error";
-	return stod(st.pop().first.c_str());
+
+	if (st.size() > 1) throw "Mismatch of operators and operands (2 or more operands are left)";
+	if(!st.isEmpty()) results.push_back(stod(st.pop().first.c_str()));
+
+	return results;//stod(st.pop().first.c_str());
+}
+
+int Calculator::isOperator(string operation)
+{
+	if (operation == "sin" || operation == "cos" || operation == "tan" || operation == "sqrt")
+		return true;
+	if (operations.find(operation) != string::npos)
+		return true;
+	return false;
 }
 
 int Calculator::getPriority(string operation)
 {
-	if (operation == "sin")
+	if (operation == "sin" || operation == "cos" || operation == "tan" || operation == "sqrt")
 		return 3;
 	else if (priority2.find(operation) != string::npos)
 		return 2;
