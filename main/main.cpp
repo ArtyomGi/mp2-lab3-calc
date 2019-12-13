@@ -7,8 +7,19 @@ void PrintQueue(queue<pair<string, ElemType> > q);
 
 int main()
 {
-	Calculator calc("11*34+(123+2 /3)+111");
-	queue<pair<string, ElemType> > parsed = calc.Parse("-11 *  -34*sin(-123+6 /-3*(-2))+   111");
+	//-11 *  cos(-34)*sin(-123+6 /-3*(-2))+   111*sqrt(100)
+	//-11 *  cos(-34)*sin(-123+6 /-3*(-2))+   111;sqrt(100);50+34*(19+11)
+	cout << "What do you want to calculate?" << endl;
+	string calculation;
+	getline(cin, calculation);
+
+	Calculator calc(calculation);
+	vector<double> results = calc.Calculate(true);
+	for (auto i = results.begin(); i < results.end(); i++)
+		cout << *i << endl;
+
+
+	/*queue<pair<string, ElemType> > parsed = calc.Parse("-11 *  cos(-34)*sin(-123+6 /-3*(-2))+   111+;sqrt(100);50+34*(19+11)");
 	//
 	queue<pair<string, ElemType> > parsed2 = parsed;
 	while (!parsed2.empty())
@@ -22,7 +33,9 @@ int main()
 	
 	//cout << s << endl;
 	//parsed = calc.Parse(s);
-	cout << calc.CalculateFromPostfix(postfix) << endl;
+	results = calc.CalculateFromPostfix(postfix);
+	for (auto i = results.begin(); i < results.end(); i++)
+		cout << *i << endl;*/
 		
   return 0;
 }
