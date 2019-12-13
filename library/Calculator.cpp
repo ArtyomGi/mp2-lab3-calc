@@ -70,8 +70,8 @@ queue<pair<string, ElemType>> Calculator::ToPostfix(queue<pair<string, ElemType>
 	while (!symbols.empty())
 	{
 		pair<string, ElemType> current = symbols.front();
-		if (current.second == Operand)
-			result.push({ current.first, Operand });
+		if (current.second == Operand || current.second == Variable)
+			result.push(current);
 		else if (current.second == Delimiter)
 		{
 			if (!st.isEmpty())
@@ -80,12 +80,10 @@ queue<pair<string, ElemType>> Calculator::ToPostfix(queue<pair<string, ElemType>
 				{
 					if (st.front().first.back() == ')' || st.front().first.back() == '(') throw "Unnecessary brackets";
 					result.push({ st.pop().first, Operation });
-					result.push({ current.first, Delimiter });
 					//result += st.pop().first;
 				}
 			}
-			else
-				result.push({ current.first, Delimiter });
+			result.push({ current.first, Delimiter });
 		}
 		else
 		{
@@ -165,12 +163,15 @@ queue<pair<string, ElemType>> Calculator::Parse(string expr)
 		case 1:
 			if (operations.find(*i) != string::npos)
 			{
-				//cout << "case 1: " << *i << endl;
 				if (tmp.length())
 				{
 					//throw "No operand before operation";
-					if(tmp == "sin" || tmp == "cos" || tmp == "tan" || tmp == "sqrt") parsed.push({ tmp, Operation });
-					else parsed.push({ tmp, Operand });
+					if(tmp == "sin" || tmp == "cos" || tmp == "tan" || tmp == "sqrt")
+						parsed.push({ tmp, Operation });
+					else if(!isNumber(tmp))
+						parsed.push({ tmp, Variable });
+					else
+						parsed.push({ tmp, Operand });
 					tmp.clear();
 				}
 				parsed.push({ string(1, *i), Operation });
@@ -181,8 +182,12 @@ queue<pair<string, ElemType>> Calculator::Parse(string expr)
 				if (tmp.length())
 				{
 					//throw "No operand before operation";
-					if (tmp == "sin" || tmp == "cos" || tmp == "tan" || tmp == "sqrt") parsed.push({ tmp, Operation });
-					else parsed.push({ tmp, Operand });
+					if (tmp == "sin" || tmp == "cos" || tmp == "tan" || tmp == "sqrt")
+						parsed.push({ tmp, Operation });
+					else if (!isNumber(tmp))
+						parsed.push({ tmp, Variable });
+					else
+						parsed.push({ tmp, Operand });
 					tmp.clear();
 				}
 				parsed.push({ string(1, *i), Delimiter });
@@ -195,8 +200,12 @@ queue<pair<string, ElemType>> Calculator::Parse(string expr)
 				{
 					//throw "No operand before operation";
 
-					if (tmp == "sin" || tmp == "cos" || tmp == "tan" || tmp == "sqrt") parsed.push({ tmp, Operation });
-					else parsed.push({ tmp, Operand });
+					if (tmp == "sin" || tmp == "cos" || tmp == "tan" || tmp == "sqrt")
+						parsed.push({ tmp, Operation });
+					else if (!isNumber(tmp))
+						parsed.push({ tmp, Variable });
+					else
+						parsed.push({ tmp, Operand });
 					tmp.clear();
 				}
 				//tmp.clear();
@@ -211,7 +220,15 @@ queue<pair<string, ElemType>> Calculator::Parse(string expr)
 		}
 	}
 
-	if (tmp.size()) parsed.push({ tmp, Operand });
+	if (tmp.size())
+	{
+		if (!isNumber(tmp))
+			parsed.push({ tmp, Variable });
+		else
+			parsed.push({ tmp, Operand });
+	}
+
+	// parsed.push({ tmp, Operand });
 
 	return parsed;
 }
@@ -219,32 +236,128 @@ queue<pair<string, ElemType>> Calculator::Parse(string expr)
 vector<double> Calculator::CalculateFromPostfix(queue<pair<string, ElemType>> parsedPostf)
 {
 	vector<double> results;
+	vector<pair<string, double>> vars;
 	//result = result;
+	bool ok = false;
 	Stack<pair<string, ElemType>> st(parsedPostf.size());
 	double op1, op2;
 	while (!parsedPostf.empty())
 	{
-		if (parsedPostf.front().second == Operand)
+		if (parsedPostf.front().second == Operand || parsedPostf.front().second == Variable)
 			st.push(parsedPostf.front());
 		else if (parsedPostf.front().second == Delimiter)
 		{
 			if (st.isEmpty()) throw "Mismatch of operators and operands (no more operands are left)";
 			if (st.size() > 1) throw "Mismatch of operators and operands (2 or more operands are left)";
 			
-			results.push_back(stod(st.pop().first.c_str()));
+			if (st.front().second == Variable)
+			{
+				ok = false;
+
+				for (auto i = vars.begin(); i < vars.end(); i++)
+				{
+					if (i->first == st.front().first)
+					{
+						results.push_back(i->second);
+						ok = true;
+						break;
+					}
+				}
+
+				if (!ok) throw "Can't find variable (Empty)";
+				st.pop();
+			}
+			else results.push_back(stod(st.pop().first.c_str()));
+
+			//results.push_back(stod(st.pop().first.c_str()));
 		}
 		else
 		{
 			switch (parsedPostf.front().first.back())
 			{
-			case '+':
-				if (st.size() < 2) throw "No operands for operator +";
+			case '=':
+				if (st.size() < 2) throw "No operands for operator =";
 				op2 = stod(st.pop().first.c_str());
-				op1 = stod(st.pop().first.c_str());
+				if (st.front().second != Variable) throw "Left value must be variable";
 
-				st.push({ to_string(op1 + op2), Operand });
+				ok = false;
+
+				for (auto i = vars.begin(); i < vars.end(); i++)
+				{
+					if (i->first == st.front().first)
+					{
+						i->second = op2;
+						ok = true;
+						break;
+					}
+				}
+
+				if (!ok) vars.push_back({ st.front().first, op2 });
+
 				break;
+			case '+':
 			case '-':
+			case '*':
+			case '/':
+				if (st.size() < 2) throw "No operands for operator +";
+
+				if (st.front().second == Variable)
+				{
+					ok = false;
+
+					for (auto i = vars.begin(); i < vars.end(); i++)
+					{
+						if (i->first == st.front().first)
+						{
+							op2 = i->second;
+							ok = true;
+							break;
+						}
+					}
+
+					if (!ok) throw "Can't find variable (2)";
+					st.pop();
+				}
+				else op2 = stod(st.pop().first.c_str());
+
+				if (st.front().second == Variable)
+				{
+					ok = false;
+
+					for (auto i = vars.begin(); i < vars.end(); i++)
+					{
+						if (i->first == st.front().first)
+						{
+							op1 = i->second;
+							ok = true;
+							break;
+						}
+					}
+
+					if (!ok) throw "Can't find variable (1)";
+					st.pop();
+				}
+				else op1 = stod(st.pop().first.c_str());
+
+				switch (parsedPostf.front().first.back())
+				{
+				case '+':
+					st.push({ to_string(op1 + op2), Operand });
+					break;
+				case '-':
+					st.push({ to_string(op1 - op2), Operand });
+					break;
+				case '*':
+					st.push({ to_string(op1 * op2), Operand });
+					break;
+				case '/':
+					st.push({ to_string(op1 / op2), Operand });
+					break;
+				}
+
+				
+				break;
+			/*case '-':
 				if (st.size() < 2) throw "No operands for operator -";
 				op2 = stod(st.pop().first.c_str());
 				op1 = stod(st.pop().first.c_str());
@@ -264,7 +377,7 @@ vector<double> Calculator::CalculateFromPostfix(queue<pair<string, ElemType>> pa
 				op1 = stod(st.pop().first.c_str());
 
 				st.push({ to_string(op1 / op2), Operand });
-				break;
+				break;*/
 			}
 			if (parsedPostf.front().first == "sin")
 			{
@@ -304,18 +417,49 @@ vector<double> Calculator::CalculateFromPostfix(queue<pair<string, ElemType>> pa
 	}
 
 	if (st.size() > 1) throw "Mismatch of operators and operands (2 or more operands are left)";
-	if(!st.isEmpty()) results.push_back(stod(st.pop().first.c_str()));
+	if (!st.isEmpty())
+	{
+		if (st.front().second == Variable)
+		{
+			ok = false;
+
+			for (auto i = vars.begin(); i < vars.end(); i++)
+			{
+				if (i->first == st.front().first)
+				{
+					results.push_back(i->second);
+					ok = true;
+					break;
+				}
+			}
+
+			if (!ok) throw "Can't find variable (Empty)";
+			st.pop();
+		}
+		else results.push_back(stod(st.pop().first.c_str()));
+	}
 
 	return results;//stod(st.pop().first.c_str());
 }
 
-int Calculator::isOperator(string operation)
+int Calculator::isOperator(string str)
 {
-	if (operation == "sin" || operation == "cos" || operation == "tan" || operation == "sqrt")
+	if (str == "sin" || str == "cos" || str == "tan" || str == "sqrt")
 		return true;
-	if (operations.find(operation) != string::npos)
+	if (operations.find(str) != string::npos)
 		return true;
 	return false;
+}
+
+int Calculator::isNumber(string str)
+{
+	//if(str[0] == '-') str.erase(str.begin(), str.begin() + 1);
+	for (auto i = str.begin(); i < str.end(); i++)
+	{
+		if (*i == '-') continue;
+		if (*i < '0' || *i > '9') return false;
+	}
+	return true;
 }
 
 int Calculator::getPriority(string operation)
@@ -326,6 +470,8 @@ int Calculator::getPriority(string operation)
 		return 2;
 	else if (priority1.find(operation) != string::npos)
 		return 1;
+	else if (priority0.find(operation) != string::npos)
+		return 0;
 	else if (priority_1.find(operation) != string::npos)
 		return -1;
 	else throw "Not an operation";

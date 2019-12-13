@@ -6,15 +6,16 @@
 
 using namespace std;
 
-enum ElemType { Operation, Operand, Delimiter };
+enum ElemType { Operation, Operand, Delimiter, Variable };
 
 class Calculator
 {
 	string expr;
 
-	const string operations = { '+', '-', '*', '/', '(', ')' };
+	const string operations = { '+', '-', '*', '/', '(', ')', '=' };
 	const string priority2 = { '*', '/' };
 	const string priority1 = { '+', '-' };
+	const string priority0 = { '=' };
 	const string priority_1 = { '(', ')' };
 	//const char func[] = { "sin", "cos" };
 
@@ -32,6 +33,7 @@ public:
 	vector<double> Calculate(int);
 	int getPriority(string operation);
 	int isOperator(string operation);
+	int isNumber(string str);
 	/*queue<pair<string, ElemType>>& getQ()
 	{
 		return parsed;
