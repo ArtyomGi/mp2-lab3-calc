@@ -11,10 +11,15 @@ class Stack
 public:
 	Stack(int N)
 	{
-		if (N <= 0) throw "Error";
+		if (N <= 0) throw "Stack size should be positive";
 		len = N;
 		index = -1;
 		pMem = new T[len];
+	}
+
+	~Stack()
+	{
+		delete[] pMem;
 	}
 
 	Stack(const Stack& s);
